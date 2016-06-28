@@ -5,13 +5,14 @@
 # the .crd files for your initial/target structures in the working directory,
 # and name your dcds in the form of "dims_mhp1_oi_*"
 
+import os
 import MDAnalysis as mda
 import numpy as np
 import matplotlib as mpl
 import MDAnalysis.analysis.rms as rms
 import matplotlib.pyplot as plt
 
-def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o"):
+def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o", show = False):
     initial = mda.Universe(top, init)
     target = mda.Universe(top, targ)
     trajectory = mda.Universe(top, traj)
@@ -29,13 +30,16 @@ def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o")
     time = rmsd_init[1]
     fig = plt.figure(figsize = (5,5))
     ax = fig.add_subplot(111)
+    ax.set_title('$\Delta \Delta$ RMSD: OB Gates')
     ax.plot(time, del_rmsd, 'k--')
-    ax.set_xlabel("time (ps)")
+    ax.set_xlabel("Time Step")
     ax.set_ylabel(r"Delta RMSD ($\AA$)")
     fig.savefig("del_rmsd_" + direction + "_mhp1.pdf")
-    plt.show()
+    if show:
+        plt.show()
 
 def gates(traj, path_ID = "i2occ2o", top = "2jln_r10_g470_c22.psf"):
+    import seaborn as sns
     u = mda.Universe(top, traj)
     traj_len = len(u.trajectory)
 
@@ -65,31 +69,39 @@ def gates(traj, path_ID = "i2occ2o", top = "2jln_r10_g470_c22.psf"):
     time = len(u.trajectory)
     fig = plt.figure(figsize = (8,5))
     ax = fig.add_subplot(111)
-    ax.plot(d1, 'k--', label = "Extracellular")
-    ax.plot(d2, 'b--', label = "Intracellular")
-    ax.plot(d3, 'r--', label = "Thick")
+    ax.plot(d1, 'k-', label = "Extracellular")
+    ax.plot(d2, 'b-', label = "Intracellular")
+    ax.plot(d3, 'r-', label = "Thick")
     box = ax.get_position()
+    ax.set_title('Gate Order Parameters')
     ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_ylim([0, 25])
     ax.set_xlabel("timestep")
     ax.set_ylabel(r"Distance to Bundle ($\AA$)")
     fig.savefig("mhp1_gate_tseries_" + path_ID + "_mhp1.pdf")
 
-def cat(direction,first, n):
-    mhp1 = mda.Universe("2jln_r10_g470_c22.psf", first)
-    protein = mhp1.select_atoms("protein")
+def cat(direction, trjdir, psf="2jln_r10_g470_c22.psf", n_trj=100, select="protein"):
     out = "full_dims_mhp1_" + direction + ".dcd"
-    with mda.Writer(out, protein.n_atoms) as W:
-        dcd_name = "dims_mhp1_" + direction + "_"
-        for i in xrange(n):
-            u = mda.Universe("2jln_r10_g470_c22.psf", dcd_name + str(i+1) + ".dcd")
-            protein = u.select_atoms("protein")
-            for ts in u.trajectory:
-                W.write(protein)
-            if (i % 10) == 0:
-                print "writing out frames for trajectory %i" % (i+1)
+    trj_name_list = []
+    dcd_basename = "dims_mhp1_" + direction
 
+    # Append all trajectory (filesnames) to complete list of parts
+    for i in xrange(n_trj):
+        print "writing out frames for trajectory %i" % (i+1)
+        # trj_name = dcd_basename + str(i+1) + ".dcd"
+        trj_name = '{}/{}_{:n}.dcd'.format(trjdir, dcd_basename, i+1)
+        # trj_name = '%s_%i.dcd' % (dcd_basename, i+1)
+        if not os.path.exists(trj_name) or os.path.getsize(trj_name) == 0:
+            break
+        trj_name_list.append(trj_name)
 
+    # Use MDAnalysis (ChainReader) to read in constructed list of trajectory parts
+    mhp1 = mda.Universe(psf, trj_name_list)
+    ag = mhp1.select_atoms(select)
+    with mda.Writer(out, ag.n_atoms) as W:
+        for ts in mhp1.trajectory:
+            W.write(ag)
 
 
 if __name__ == "__main__":

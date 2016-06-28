@@ -1,0 +1,16 @@
+## ~~~ Slurp up all instances of a file in directories below current directory and write them line by line to a text file ~~~ ##
+find ./*/ -name "mhp1_analysis.py" -type f -fls analysis_dirs.txt
+
+
+## ~~~ Find and launch .ge scripts for long-term runs [work in progress -- not functional] ~~~ ##
+find ./mashteryoda/002/ -name "dims_seed_bench.ge" -type f -exec qsub_dependents.py -N 6 -- -q workstations.q@mashteryoda {} \;
+
+
+## ~~~ Numerically concatenate files of a certain form [Note: does not work for .dcds] ~~~ ##
+cat $(find ./ -name "file*" | sort -n) > newfile.out
+
+## ~~~ Print the number of lines in a text file ~~~ ##
+sed -n "$=" file.txt
+
+## ~~~ Print nth-to-mth character of each line in a text file ~~~ ##
+sed 's/^.....//' file.txt 
