@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib as mpl
 import MDAnalysis.analysis.rms as rms
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o", show = False):
     initial = mda.Universe(top, init)
@@ -38,15 +39,13 @@ def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o",
     if show:
         plt.show()
 
-def gates(traj, path_ID = "i2occ2o", top = "2jln_r10_g470_c22.psf"):
-    import seaborn as sns
+def OP_proc(traj, list_name = "d", top = "2jln_r10_g470_c22.psf"):
     u = mda.Universe(top, traj)
-    traj_len = len(u.trajectory)
 
     d1 = []
     d2 = []
     d3 = []
-
+    print "Tabulating gate distances..."
     for ts in u.trajectory:
         b_ec = u.select_atoms("resid 38:40") #select bundle for ec_thin comparison
         ec_thin = u.select_atoms("resid 351:353") #select extracellular thin gate
@@ -66,7 +65,10 @@ def gates(traj, path_ID = "i2occ2o", top = "2jln_r10_g470_c22.psf"):
         d2.append(d2_b) #Ic_thin
         d3.append(d3_b) #Thick Gate
 
-    time = len(u.trajectory)
+    print "Lists populated"
+    return d1, d2, d3
+
+def plt_gates(path_ID = "i2occ2o"):
     fig = plt.figure(figsize = (8,5))
     ax = fig.add_subplot(111)
     ax.plot(d1, 'k-', label = "Extracellular")
@@ -81,7 +83,23 @@ def gates(traj, path_ID = "i2occ2o", top = "2jln_r10_g470_c22.psf"):
     ax.set_ylabel(r"Distance to Bundle ($\AA$)")
     fig.savefig("mhp1_gate_tseries_" + path_ID + "_mhp1.pdf")
 
-def cat(direction, trjdir, psf="2jln_r10_g470_c22.psf", n_trj=100, select="protein"):
+    print "Gate lists are now populated"
+
+    fig = plt.figure(figsize = (8,5))
+    ax = fig.add_subplot(111)
+    ax.plot(d1, 'k-', label = "Extracellular")
+    ax.plot(d2, 'b-', label = "Intracellular")
+    ax.plot(d3, 'r-', label = "Thick")
+    box = ax.get_position()
+    ax.set_title('Gate Order Parameters')
+    ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_ylim([0, 25])
+    ax.set_xlabel("timestep")
+    ax.set_ylabel(r"Distance to Bundle ($\AA$)")
+    fig.savefig("mhp1_gate_tseries_" + path_ID + "_mhp1.pdf")
+
+def cat(direction = "i2occ2o", trjdir = ".", psf="2jln_r10_g470_c22.psf", n_trj=100, select="protein"):
     out = "full_dims_mhp1_" + direction + ".dcd"
     trj_name_list = []
     dcd_basename = "dims_mhp1_" + direction
@@ -99,7 +117,7 @@ def cat(direction, trjdir, psf="2jln_r10_g470_c22.psf", n_trj=100, select="prote
     # Use MDAnalysis (ChainReader) to read in constructed list of trajectory parts
     mhp1 = mda.Universe(psf, trj_name_list)
     ag = mhp1.select_atoms(select)
-    with mda.Writer(out, ag.n_atoms) as W:
+    with mda.Writer(trjdir + out, ag.n_atoms) as W:
         for ts in mhp1.trajectory:
             W.write(ag)
 
