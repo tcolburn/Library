@@ -5,8 +5,6 @@
 # the .crd files for your initial/target structures in the working directory,
 # and name your dcds in the form of "dims_mhp1_oi_*"
 
-import numpy
-from itertools import izip
 import os
 import MDAnalysis as mda
 import numpy as np
@@ -15,128 +13,31 @@ import MDAnalysis.analysis.rms as rms
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def regularized_function(x, y, func, bins=100, brange=None):
-    """Compute *func()* over data aggregated in bins.
-    ``(x,y) --> (x', func(Y'))``  with ``Y' = {y: y(x) where x in x' bin}``
-    First the data is collected in bins x' along x and then *func* is
-    applied to all data points Y' that have been collected in the bin.
-    .. function:: func(y) -> float
-       *func* takes exactly one argument, a np 1D array *y* (the
-       values in a single bin of the histogram), and reduces it to one
-       scalar float.
-    .. Note:: *x* and *y* must be 1D arrays.
-    :Arguments:
-       x
-          abscissa values (for binning)
-       y
-          ordinate values (func is applied)
-       func
-          a np ufunc that takes one argument, func(Y')
-       bins
-          number or array
-       brange
-          limits (used with number of bins)
-    :Returns:
-       F,edges
-          function and edges (``midpoints = 0.5*(edges[:-1]+edges[1:])``)
-    (This function originated as
-    :func:`recsql.sqlfunctions.regularized_function`.)
-    """
-    _x = np.asarray(x)
-    _y = np.asarray(y)
-
-    if len(_x.shape) != 1 or len(_y.shape) != 1:
-        raise TypeError("Can only deal with 1D arrays.")
-
-    # setup of bins (taken from np.histogram)
-    if (brange is not None):
-        mn, mx = brange
-        if (mn > mx):
-                    raise AttributeError('max must be larger than min in range parameter.')
-
-    if not np.iterable(bins):
-        if brange is None:
-            brange = (_x.min(), _x.max())
-        mn, mx = [float(mi) for mi in brange]
-        if mn == mx:
-            mn -= 0.5
-            mx += 0.5
-        bins = np.linspace(mn, mx, bins+1, endpoint=True)
-    else:
-        bins = np.asarray(bins)
-        if (np.diff(bins) < 0).any():
-            raise ValueError('bins must increase monotonically.')
-
-    sorting_index = np.argsort(_x)
-    sx = _x[sorting_index]
-    sy = _y[sorting_index]
-
-    # boundaries in SORTED data that demarcate bins; position in bin_index is the bin number
-    bin_index = np.r_[sx.searchsorted(bins[:-1], 'left'),
-                         sx.searchsorted(bins[-1], 'right')]
-
-    # naive implementation: apply operator to each chunk = sy[start:stop] separately
-    #
-    # It's not clear to me how one could effectively block this procedure (cf
-    # block = 65536 in np.histogram) because there does not seem to be a
-    # general way to combine the chunks for different blocks, just think of
-    # func=median
-    F = np.zeros(len(bins)-1)  # final function
-    F[:] = [func(sy[start:stop]) for start,stop in izip(bin_index[:-1],bin_index[1:])]
-    return F,bins
-
-
-
-def gates_DIM_proc(traj, top = "/nfs/homes/tcolburn/Projects/Beckstein/Mhp1/top/2x79_r10_g470.psf"):
-    u = mda.Universe(top, traj)
-    traj_len = len(u.trajectory)
-
-    gate1 = []
-    gate2 = []
-    gate3 = []
-
-    for ts in u.trajectory:
-        b_ec = u.select_atoms("resid 38:40") #select bundle for ec_thin comparison
-        ec_thin = u.select_atoms("resid 351:353") #select extracellular thin gate
-        b_ic = u.select_atoms("resid 152:154") #sic
-        ic_thin = u.select_atoms("resid 220:222") #select intracellular thin gate
-        b_tg = u.select_atoms("resid 29 or resid 32") #sic
-        thick = u.select_atoms("resid 300 or resid 303:304") #select thick gate
-
-        gate1_a = abs(b_ec.center_of_mass() - ec_thin.center_of_mass())
-        gate2_a = abs(b_ic.center_of_mass() - ic_thin.center_of_mass())
-        gate3_a = abs(b_tg.center_of_mass() - thick.center_of_mass())
-        gate1_b = np.linalg.norm(gate1_a)
-        gate2_b = np.linalg.norm(gate2_a)
-        gate3_b = np.linalg.norm(gate3_a)
-
-        gate1.append(gate1_b) #Ec_thin
-        gate2.append(gate2_b) #Ic_thin
-        gate3.append(gate3_b) #Thick Gate
-    
-    return gate1, gate2, gate3, traj_len
-
-    
-
-def delta_proc(init, targ, traj, top = "/nfs/homes/tcolburn/Projects/Beckstein/Mhp1/top/2x79_r10_g470.psf", 
-               direction = "i2occ2o", label = "TC"):
+def delta(init, targ, traj,top = "2jln_r10_g470_c22.psf", direction = "i2occ2o", show = False):
     initial = mda.Universe(top, init)
     target = mda.Universe(top, targ)
     trajectory = mda.Universe(top, traj)
 
-    r_init =  rms.RMSD(trajectory, initial, select='name CA and protein')
+    r_init =  rms.RMSD(trajectory, initial, select='all')
     r_init.run()
-    r_init.save("r_init_" + label)
-    r_targ =  rms.RMSD(trajectory, target, select='name CA and protein')
+    r_init.save("r_init")
+    r_targ =  rms.RMSD(trajectory, target, select='all')
     r_targ.run()
-    r_targ.save("r_targ" + label)
+    r_targ.save("r_targ")
 
     rmsd_init = r_init.rmsd.T
     rmsd_targ = r_targ.rmsd.T
     del_rmsd = rmsd_init[2] - rmsd_targ[2]
     time = rmsd_init[1]
-    
-    return del_rmsd, time
+    fig = plt.figure(figsize = (5,5))
+    ax = fig.add_subplot(111)
+    ax.set_title('$\Delta \Delta$ RMSD: OB Gates')
+    ax.plot(time, del_rmsd, 'k--')
+    ax.set_xlabel("Time Step")
+    ax.set_ylabel(r"Delta RMSD ($\AA$)")
+    fig.savefig("del_rmsd_" + direction + "_mhp1.pdf")
+    if show:
+        plt.show()
 
 def OP_proc(traj, list_name = "d", top = "2jln_r10_g470_c22.psf"):
     u = mda.Universe(top, traj)
@@ -166,6 +67,37 @@ def OP_proc(traj, list_name = "d", top = "2jln_r10_g470_c22.psf"):
 
     print "Lists populated"
     return d1, d2, d3
+
+def plt_gates(path_ID = "i2occ2o"):
+    fig = plt.figure(figsize = (8,5))
+    ax = fig.add_subplot(111)
+    ax.plot(d1, 'k-', label = "Extracellular")
+    ax.plot(d2, 'b-', label = "Intracellular")
+    ax.plot(d3, 'r-', label = "Thick")
+    box = ax.get_position()
+    ax.set_title('Gate Order Parameters')
+    ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_ylim([0, 25])
+    ax.set_xlabel("timestep")
+    ax.set_ylabel(r"Distance to Bundle ($\AA$)")
+    fig.savefig("mhp1_gate_tseries_" + path_ID + "_mhp1.pdf")
+
+    print "Gate lists are now populated"
+
+    fig = plt.figure(figsize = (8,5))
+    ax = fig.add_subplot(111)
+    ax.plot(d1, 'k-', label = "Extracellular")
+    ax.plot(d2, 'b-', label = "Intracellular")
+    ax.plot(d3, 'r-', label = "Thick")
+    box = ax.get_position()
+    ax.set_title('Gate Order Parameters')
+    ax.set_position([box.x0, box.y0, box.width * 0.7, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.set_ylim([0, 25])
+    ax.set_xlabel("timestep")
+    ax.set_ylabel(r"Distance to Bundle ($\AA$)")
+    fig.savefig("mhp1_gate_tseries_" + path_ID + "_mhp1.pdf")
 
 def cat(direction = "i2occ2o", trjdir = ".", psf="2jln_r10_g470_c22.psf", n_trj=100, select="protein"):
     out = "full_dims_mhp1_" + direction + ".dcd"
