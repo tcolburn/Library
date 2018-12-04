@@ -5,7 +5,7 @@
 # the .crd files for your initial/target structures in the working directory,
 # and name your dcds in the form of "dims_mhp1_oi_*"
 
-import numpy as np
+import numpy
 from itertools import izip
 import os
 import MDAnalysis as mda
@@ -14,31 +14,13 @@ import MDAnalysis.analysis.rms as rms
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-class PDBToBinaryTraj(object):
-
-    def __init__(self, universe, output_type='.dcd', infix=''):
-        self.universe = universe
-        self.universe.atoms.write('new_top.pdb') # write first frame as topology
-
-        self.frames = self.universe.trajectory
-        base, ext = os.path.splitext(self.frames.filename)
-        path, name = os.path.split(base)
-        self.newname = name + infix + output_type
-
-    def convert(self):
-        w = mda.Writer(self.newname, self.frames.n_atoms)
-        for ts in self.frames:
-            w.write(ts)
-        w.close()
-
-
 def regularized_function(x, y, func, bins=100, brange=None):
     """Compute *func()* over data aggregated in bins.
     ``(x,y) --> (x', func(Y'))``  with ``Y' = {y: y(x) where x in x' bin}``
     First the data is collected in bins x' along x and then *func* is
     applied to all data points Y' that have been collected in the bin.
     .. function:: func(y) -> float
-       *func* takes exactly one argument, a np 1D array *y* (the
+       *func* takes exactly one argument, a numpy 1D array *y* (the
        values in a single bin of the histogram), and reduces it to one
        scalar float.
     .. Note:: *x* and *y* must be 1D arrays.
@@ -48,7 +30,7 @@ def regularized_function(x, y, func, bins=100, brange=None):
        y
           ordinate values (func is applied)
        func
-          a np ufunc that takes one argument, func(Y')
+          a numpy ufunc that takes one argument, func(Y')
        bins
           number or array
        brange
@@ -58,46 +40,46 @@ def regularized_function(x, y, func, bins=100, brange=None):
           function and edges (``midpoints = 0.5*(edges[:-1]+edges[1:])``)
     (This function originated as
     :func:`recsql.sqlfunctions.regularized_function`.)"""
-    _x = np.asarray(x)
-    _y = np.asarray(y)
+    _x = numpy.asarray(x)
+    _y = numpy.asarray(y)
 
     if len(_x.shape) != 1 or len(_y.shape) != 1:
         raise TypeError("Can only deal with 1D arrays.")
 
-    # setup of bins (taken from np.histogram)
+    # setup of bins (taken from numpy.histogram)
     if (brange is not None):
         mn, mx = brange
         if (mn > mx):
                     raise AttributeError('max must be larger than min in range parameter.')
 
-    if not np.iterable(bins):
+    if not numpy.iterable(bins):
         if brange is None:
             brange = (_x.min(), _x.max())
         mn, mx = [float(mi) for mi in brange]
         if mn == mx:
             mn -= 0.5
             mx += 0.5
-        bins = np.linspace(mn, mx, bins+1, endpoint=True)
+        bins = numpy.linspace(mn, mx, bins+1, endpoint=True)
     else:
-        bins = np.asarray(bins)
-        if (np.diff(bins) < 0).any():
+        bins = numpy.asarray(bins)
+        if (numpy.diff(bins) < 0).any():
             raise ValueError('bins must increase monotonically.')
 
-    sorting_index = np.argsort(_x)
+    sorting_index = numpy.argsort(_x)
     sx = _x[sorting_index]
     sy = _y[sorting_index]
 
     # boundaries in SORTED data that demarcate bins; position in bin_index is the bin number
-    bin_index = np.r_[sx.searchsorted(bins[:-1], 'left'),
+    bin_index = numpy.r_[sx.searchsorted(bins[:-1], 'left'),
                          sx.searchsorted(bins[-1], 'right')]
 
     # naive implementation: apply operator to each chunk = sy[start:stop] separately
     #
     # It's not clear to me how one could effectively block this procedure (cf
-    # block = 65536 in np.histogram) because there does not seem to be a
+    # block = 65536 in numpy.histogram) because there does not seem to be a
     # general way to combine the chunks for different blocks, just think of
     # func=median
-    F = np.zeros(len(bins)-1)  # final function
+    F = numpy.zeros(len(bins)-1)  # final function
     F[:] = [func(sy[start:stop]) for start,stop in izip(bin_index[:-1],bin_index[1:])]
     return F,bins
 
@@ -122,9 +104,9 @@ def gates_DIM_proc(traj, top = "/nfs/homes/tcolburn/Projects/Beckstein/Mhp1/top/
         gate1_a = abs(b_ec.center_of_mass() - ec_thin.center_of_mass())
         gate2_a = abs(b_ic.center_of_mass() - ic_thin.center_of_mass())
         gate3_a = abs(b_tg.center_of_mass() - thick.center_of_mass())
-        gate1_b = np.linalg.norm(gate1_a)
-        gate2_b = np.linalg.norm(gate2_a)
-        gate3_b = np.linalg.norm(gate3_a)
+        gate1_b = numpy.linalg.norm(gate1_a)
+        gate2_b = numpy.linalg.norm(gate2_a)
+        gate3_b = numpy.linalg.norm(gate3_a)
 
         gate1.append(gate1_b) #Ec_thin
         gate2.append(gate2_b) #Ic_thin
@@ -172,9 +154,9 @@ def OP_proc(traj, list_name = "d", top = "2jln_r10_g470_c22.psf"):
         d1_a = abs(b_ec.center_of_mass() - ec_thin.center_of_mass())
         d2_a = abs(b_ic.center_of_mass() - ic_thin.center_of_mass())
         d3_a = abs(b_tg.center_of_mass() - thick.center_of_mass())
-        d1_b = np.linalg.norm(d1_a)
-        d2_b = np.linalg.norm(d2_a)
-        d3_b = np.linalg.norm(d3_a)
+        d1_b = numpy.linalg.norm(d1_a)
+        d2_b = numpy.linalg.norm(d2_a)
+        d3_b = numpy.linalg.norm(d3_a)
 
         d1.append(d1_b) #Ec_thin
         d2.append(d2_b) #Ic_thin
