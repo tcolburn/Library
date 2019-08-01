@@ -1,0 +1,26 @@
+Code for setting up and analyzing Mhp1 sims.
+
+Version controlled!
+
+RUnning scripts
+----------------
+
+Scripts are stored in bin/. (Python modules can live in lib/python)
+
+To run scripts in a shell session:
+
+  . ~/Projects/Beckstein/Mhp1/Library/setup_PATH
+
+and then everything in bin/ is available.
+
+Add to your .bashrc
+
+  alias setup_Mhp1=". ~/Projects/Beckstein/Mhp1/Library/setup_PATH"
+
+and then in a shell session
+
+  setup_Mhp1
+
+and you 're set.
+
+

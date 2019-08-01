@@ -1,0 +1,69 @@
+top_dir = '/nfs/homes/tcolburn/Projects/Beckstein/Mhp1/simulations/dims/implicit_solvent/implicit_membrane/run/in_occ_out'
+
+for i in xrange(1,10):
+    if i == 1:
+        try:
+            print i
+            os.chdir('0%d0/traj' % (i))
+            mpa.cat('i2occ2o', 'dims_mhp1_i2occ2o_1.dcd', n=40)
+            os.chdir(top_dir)
+            os.chdir('00%d/traj' % (i))
+            mpa.cat('i2occ2o', 'dims_mhp1_i2occ2o_1.dcd', n=40)
+            os.chdir(top_dir)
+        except (IOError, OSError):
+            os.chdir(top_dir)
+            continue
+    else:
+        try:
+            print i
+            os.chdir('00%d/traj' % (i))
+            mpa.cat('i2occ2o', 'dims_mhp1_i2occ2o_1.dcd', n=40)
+            os.chdir(top_dir)
+        except (IOError, OSError):
+            os.chdir(top_dir)
+            continue
+
+top_dir = '/nfs/homes/tcolburn/Projects/Beckstein/Mhp1/simulations/dims/implicit_solvent/implicit_membrane/run/in_occ_out'
+
+for i in xrange(1,10):
+    if i == 1:
+        try:
+            print i
+            os.chdir('0%d0/traj' % (i))
+            mpa.gates('full_dims_mhp1_i2occ2o.dcd')
+            os.chdir(top_dir)
+            os.chdir('00%d/traj' % (i))
+            mpa.gates('full_dims_mhp1_i2occ2o.dcd')
+            os.chdir(top_dir)
+        except (IOError, OSError):
+            os.chdir(top_dir)
+            continue
+    else:
+        try:
+            print i
+            os.chdir('00%d/traj' % (i))
+            mpa.gates('full_dims_mhp1_i2occ2o.dcd')
+            os.chdir(top_dir)
+        except (IOError, OSError):
+            os.chdir(top_dir)
+            continue
+
+
+
+
+
+
+
+
+for i in xrange(10):
+    print "The number is {:03n} {} {}".format(i, "pop", "poop")
+
+trj_name_list = []
+large_num = 100
+for i in xrange(1,large_num):
+    trj_name = "dims_mhp1_i2occ2o_{:n}".format(i)
+    if not os.path.isfile(trj_name):
+        break
+    trj_name_list.append(trj_name)
+
+u = mda.Universe("<psf file>", trj_name_list)
